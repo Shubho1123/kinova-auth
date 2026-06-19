@@ -1,54 +1,161 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kinova Sign In</title>
+
+<style>
+:root { color-scheme: dark; }
+
+body{
+  margin:0;
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  background:#111313;
+  color:#f3f0e9;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
+}
+
+.card{
+  max-width:420px;
+  text-align:center;
+  padding:40px;
+}
+
+.logo{
+  color:#ff8978;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  margin-bottom:18px;
+}
+
+.spinner{
+  width:32px;
+  height:32px;
+  margin:0 auto 24px;
+  border:2px solid rgba(255,114,94,.2);
+  border-top-color:#ff725e;
+  border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+
+@keyframes spin{
+  to{transform:rotate(360deg)}
+}
+
+h1{
+  margin:0 0 8px;
+  font-size:30px;
+  font-weight:600;
+}
+
+p{
+  margin:0;
+  color:#949995;
+}
+
+.ok h1{color:#7fd3a9;}
+.err h1{color:#ff6b6b;}
+</style>
 </head>
+
 <body>
-<h2>Signing you in...</h2>
+
+<div id="card" class="card">
+  <div class="logo">KINOVA</div>
+  <div id="spinner" class="spinner"></div>
+  <h1 id="title">Signing you in...</h1>
+  <p id="msg">Linking your Google account.</p>
+</div>
 
 <script>
 (async function () {
 
-  const sessionId = new URLSearchParams(location.search).get("sessionId");
+  const SUPABASE_URL =
+    "https://urtfcggdyuhstjpqjxoh.supabase.co";
 
-  const hash = new URLSearchParams(location.hash.slice(1));
+  const SUPABASE_ANON_KEY =
+    "YOUR_ANON_KEY_HERE";
+
+  const card = document.getElementById("card");
+  const spinner = document.getElementById("spinner");
+  const title = document.getElementById("title");
+  const msg = document.getElementById("msg");
+
+  function done(ok, heading, text){
+    spinner.style.display = "none";
+    title.textContent = heading;
+    msg.textContent = text;
+    card.className = "card " + (ok ? "ok" : "err");
+  }
+
+  const sessionId =
+    new URLSearchParams(location.search).get("sessionId");
+
+  if (!sessionId) {
+    done(false, "Missing session", "No sessionId found.");
+    return;
+  }
+
+  const hash =
+    new URLSearchParams(location.hash.slice(1));
 
   const accessToken = hash.get("access_token");
   const refreshToken = hash.get("refresh_token");
 
   if (!accessToken) {
-    document.body.innerHTML = "<h2>No access token returned</h2>";
+    done(false, "Missing token", "No access token returned.");
     return;
   }
 
-  const res = await fetch(
-    "https://urtfcggdyuhstjpqjxoh.supabase.co/rest/v1/auth_sessions",
-    {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + accessToken,
-        "apikey": "YOUR_ANON_KEY",
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal"
-      },
-      body: JSON.stringify({
-        session_id: sessionId,
-        access_token: accessToken,
-        refresh_token: refreshToken
-      })
-    }
-  );
+  try {
 
-  if (res.ok) {
-    document.body.innerHTML =
-      "<h2>Login successful. Return to After Effects.</h2>";
-  } else {
-    document.body.innerHTML =
-      "<h2>Failed.</h2><pre>" + await res.text() + "</pre>";
+    const res = await fetch(
+      SUPABASE_URL + "/rest/v1/auth_sessions",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + accessToken,
+          "apikey": SUPABASE_ANON_KEY,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          access_token: accessToken,
+          refresh_token: refreshToken
+        })
+      }
+    );
+
+    if (res.ok) {
+      done(
+        true,
+        "Login successful",
+        "Return to After Effects."
+      );
+    } else {
+      done(
+        false,
+        "Failed to save session",
+        await res.text()
+      );
+    }
+
+  } catch (err) {
+    done(
+      false,
+      "Network error",
+      String(err)
+    );
   }
 
 })();
 </script>
+
 </body>
 </html>
